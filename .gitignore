@@ -1,0 +1,26 @@
+# .gitignore
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environment
+venv/
+.venv/
+
+# IDE/Editor specific
+.vscode/
+.idea/
+
+# Secret file
+.env
+
+# Output files
+output/
+*.mp4
+*.mp3
+*.wav
+
+# OS specific
+.DS_Store
+Thumbs.db
