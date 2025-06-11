@@ -5,8 +5,10 @@ __pycache__/
 *.pyc
 
 # Virtual Environment
-venv/
+# venv/ - pyenv/venv
+# poetry
 .venv/
+.poetry-cache/
 
 # IDE/Editor specific
 .vscode/
