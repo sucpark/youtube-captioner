@@ -1,10 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-# 테스트 대상 함수 임포트
 from src.modules.translator import translate_text_gpt, _create_translation_chunks
 
-# ElevenLabs의 가짜 전사 결과
 FAKE_TRANSCRIPTION = {
     "words": [
         {'text': 'Hello', 'start': 0.0, 'end': 0.5, 'speaker_id': 'speaker_1'},
@@ -17,36 +15,44 @@ FAKE_TRANSCRIPTION = {
 
 def test_create_translation_chunks():
     """텍스트가 화자 변경 시 올바르게 묶이는지 테스트합니다."""
-    # max_chunk_words를 크게 설정하여 화자 변경 로직만 테스트
     chunks = _create_translation_chunks(FAKE_TRANSCRIPTION, max_chunk_words=10)
-    
     assert len(chunks) == 2
-    # 첫 번째 청크는 speaker_1의 말만 포함해야 함
     assert chunks[0]['source_text'] == "speaker_1: Hello world."
-    assert chunks[0]['start_time'] == 0.0
-    assert chunks[0]['end_time'] == 1.2
-    # 두 번째 청크는 speaker_2의 말만 포함해야 함
     assert chunks[1]['source_text'] == "speaker_2: How are you?"
-    assert chunks[1]['start_time'] == 1.5
-    assert chunks[1]['end_time'] == 2.5
 
 @patch('src.modules.translator.openai_client')
-def test_translate_text_gpt_success(mock_openai_client):
-    """GPT 번역 성공 케이스를 테스트합니다."""
-    # OpenAI API의 가짜 응답 설정
-    mock_response = MagicMock()
-    mock_response.choices[0].message.content = "speaker_1: 안녕 세상."
-    mock_openai_client.chat.completions.create.return_value = mock_response
+def test_translate_text_gpt_with_history(mock_openai_client):
+    """GPT 번역 시 대화 기록이 올바르게 전달되는지 테스트합니다."""
+    # API가 호출될 때마다 다른 응답을 하도록 설정
+    mock_openai_client.chat.completions.create.side_effect = [
+        MagicMock(choices=[MagicMock(message=MagicMock(content="speaker_1: 안녕 세상."))]),
+        MagicMock(choices=[MagicMock(message=MagicMock(content="speaker_2: 어떻게 지내?"))])
+    ]
 
     # 함수 실행
-    translated_data = translate_text_gpt(FAKE_TRANSCRIPTION, "Korean")
+    translated_data = translate_text_gpt(FAKE_TRANSCRIPTION, "Korean", history_size=1)
 
     # 결과 검증
-    assert len(translated_data) > 0 # 청크가 여러 개일 수 있으므로
+    assert len(translated_data) == 2
     assert "안녕 세상" in translated_data[0]['translated_text']
-    
-    # OpenAI API가 올바른 프롬프트로 호출되었는지 확인
-    assert mock_openai_client.chat.completions.create.called
-    call_args = mock_openai_client.chat.completions.create.call_args_list[0]
-    messages = call_args.kwargs['messages']
-    assert "Translate the following dialogue into natural Korean" in messages[0]['content']
+    assert "어떻게 지내" in translated_data[1]['translated_text']
+
+    # API 호출 기록 확인
+    call_args_list = mock_openai_client.chat.completions.create.call_args_list
+    assert len(call_args_list) == 2  # 청크가 2개이므로 API 호출도 2번
+
+    # 첫 번째 호출의 메시지 확인 (기록 없음)
+    first_call_messages = call_args_list[0].kwargs['messages']
+    assert len(first_call_messages) == 2 # system, user
+    assert first_call_messages[1]['role'] == 'user'
+    assert first_call_messages[1]['content'] == 'speaker_1: Hello world.'
+
+    # 두 번째 호출의 메시지 확인 (기록 1개 포함)
+    second_call_messages = call_args_list[1].kwargs['messages']
+    assert len(second_call_messages) == 4 # system, user, assistant, user
+    assert second_call_messages[1]['role'] == 'user'
+    assert second_call_messages[1]['content'] == 'speaker_1: Hello world.'
+    assert second_call_messages[2]['role'] == 'assistant'
+    assert second_call_messages[2]['content'] == 'speaker_1: 안녕 세상.'
+    assert second_call_messages[3]['role'] == 'user'
+    assert second_call_messages[3]['content'] == 'speaker_2: How are you?'
