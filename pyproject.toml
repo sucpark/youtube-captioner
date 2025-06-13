@@ -6,8 +6,11 @@ authors = ["sucpark <sucpark0317@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.12"
+numba = "0.61.0"
 yt-dlp = "^2025.6.9"
+elevenlabs = "^2.3.0"
+python-dotenv = "^1.1.0"
 
 
 [tool.poetry.group.dev.dependencies]
