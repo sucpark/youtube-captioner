@@ -2,28 +2,23 @@ import os
 import json
 import logging
 from datetime import datetime, timezone
+from src import config
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 METADATA_FILE = "metadata.json"
 
 def load_metadata(output_dir: str) -> dict:
-    """
-    지정된 경로에서 metadata.json 파일을 로드합니다.
-    파일이 없거나 손상된 경우, 빈 딕셔너리를 반환합니다.
-    """
+    """지정된 경로에서 metadata.json 파일을 로드합니다."""
     filepath = os.path.join(output_dir, METADATA_FILE)
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        logging.info(f"메타데이터 파일('{filepath}')을 찾을 수 없거나 손상되었습니다. 새 파일을 생성합니다.")
         return {}
 
 def save_metadata(output_dir: str, data: dict):
-    """
-    메타데이터 딕셔너리를 metadata.json 파일에 저장합니다.
-    """
+    """메타데이터 딕셔너리를 metadata.json 파일에 저장합니다."""
     filepath = os.path.join(output_dir, METADATA_FILE)
     try:
         with open(filepath, 'w', encoding='utf-8') as f:
@@ -32,15 +27,27 @@ def save_metadata(output_dir: str, data: dict):
     except Exception as e:
         logging.error(f"❌ 메타데이터 저장 실패: {e}")
 
+def file_exists_in_metadata(video_entry: dict, file_key: str, output_dir: str) -> bool:
+    """
+    [이동] 메타데이터에 파일 정보가 있고, 실제 파일도 존재하는지 확인합니다.
+    """
+    if file_key in video_entry.get('files', {}):
+        filename = video_entry['files'][file_key]
+        if not filename: return False
+        
+        filepath = os.path.join(output_dir, filename)
+        if os.path.exists(filepath):
+            return True
+        else:
+            logging.warning(f"메타데이터에는 '{file_key}' 파일({filename})이 기록되어 있지만, 실제 파일이 없습니다. 재생성합니다.")
+            # 상태 불일치를 해결하기 위해 메타데이터에서 키를 제거할 수도 있습니다.
+            # del video_entry['files'][file_key] 
+    return False
+
 def update_video_entry(metadata: dict, video_id: str, info_dict: dict):
-    """
-    yt-dlp에서 가져온 정보로 메타데이터 엔트리를 생성하거나 업데이트합니다.
-    정보가 누락된 경우를 안전하게 처리합니다.
-    """
+    """yt-dlp에서 가져온 정보로 메타데이터 엔트리를 생성하거나 업데이트합니다."""
     if video_id not in metadata:
         metadata[video_id] = {'files': {}}
-
-    # .get()을 사용하여 키가 없더라도 오류 없이 안전하게 값을 가져옴
     metadata[video_id].update({
         "title": info_dict.get('title', 'Unknown Title'),
         "url": info_dict.get('webpage_url', ''),
@@ -51,11 +58,23 @@ def update_video_entry(metadata: dict, video_id: str, info_dict: dict):
     })
 
 def add_file_to_entry(metadata: dict, video_id: str, file_key: str, filepath: str):
-    """
-    특정 비디오 엔트리에 생성된 파일 정보를 추가합니다.
-    """
+    """특정 비디오 엔트리에 생성된 파일 정보를 추가합니다."""
     if video_id in metadata:
-        # 전체 경로가 아닌 파일 이름만 저장
         metadata[video_id]['files'][file_key] = os.path.basename(filepath)
         metadata[video_id]["last_updated"] = datetime.now(timezone.utc).isoformat()
-        logging.info(f"메타데이터 업데이트: '{video_id}'에 '{file_key}' 파일 정보 추가.")
+
+def ensure_source_language(metadata: dict, video_id: str, transcription_filepath: str):
+    """메타데이터에 원본 언어 코드가 없으면, 전사 파일에서 읽어와 표준(ISO 639-1)에 맞게 추가합니다."""
+    video_entry = metadata.get(video_id)
+    if not video_entry or 'source_language_code' in video_entry:
+        return
+    try:
+        with open(transcription_filepath, 'r', encoding='utf-8') as f:
+            transcription_data = json.load(f)
+        lang_code_from_api = transcription_data.get('language_code')
+        standard_lang_code = config.convert_to_iso639_1(lang_code_from_api)
+        if standard_lang_code:
+            video_entry['source_language_code'] = standard_lang_code
+            logging.info(f"메타데이터 업데이트: '{video_id}'에 원본 언어 코드 '{standard_lang_code}' 추가 (원본: '{lang_code_from_api}').")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logging.warning(f"원본 언어 코드를 확인하기 위해 전사 파일을 읽는 중 오류 발생: {e}")
