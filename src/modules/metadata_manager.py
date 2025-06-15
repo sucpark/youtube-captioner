@@ -2,7 +2,6 @@ import os
 import json
 import logging
 from datetime import datetime, timezone
-from src import config
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -28,9 +27,7 @@ def save_metadata(output_dir: str, data: dict):
         logging.error(f"❌ 메타데이터 저장 실패: {e}")
 
 def file_exists_in_metadata(video_entry: dict, file_key: str, output_dir: str) -> bool:
-    """
-    [이동] 메타데이터에 파일 정보가 있고, 실제 파일도 존재하는지 확인합니다.
-    """
+    """메타데이터에 파일 정보가 있고, 실제 파일도 존재하는지 확인합니다."""
     if file_key in video_entry.get('files', {}):
         filename = video_entry['files'][file_key]
         if not filename: return False
@@ -40,8 +37,6 @@ def file_exists_in_metadata(video_entry: dict, file_key: str, output_dir: str) -
             return True
         else:
             logging.warning(f"메타데이터에는 '{file_key}' 파일({filename})이 기록되어 있지만, 실제 파일이 없습니다. 재생성합니다.")
-            # 상태 불일치를 해결하기 위해 메타데이터에서 키를 제거할 수도 있습니다.
-            # del video_entry['files'][file_key] 
     return False
 
 def update_video_entry(metadata: dict, video_id: str, info_dict: dict):
@@ -64,17 +59,24 @@ def add_file_to_entry(metadata: dict, video_id: str, file_key: str, filepath: st
         metadata[video_id]["last_updated"] = datetime.now(timezone.utc).isoformat()
 
 def ensure_source_language(metadata: dict, video_id: str, transcription_filepath: str):
-    """메타데이터에 원본 언어 코드가 없으면, 전사 파일에서 읽어와 표준(ISO 639-1)에 맞게 추가합니다."""
+    """
+    [개선] 메타데이터에 원본 언어 코드가 없으면, 전사 파일에서 읽어와 추가합니다.
+    이제 전사 파일의 언어 코드는 이미 표준화되어 있다고 가정하므로, 변환 로직이 필요 없습니다.
+    """
     video_entry = metadata.get(video_id)
     if not video_entry or 'source_language_code' in video_entry:
         return
+
     try:
         with open(transcription_filepath, 'r', encoding='utf-8') as f:
             transcription_data = json.load(f)
-        lang_code_from_api = transcription_data.get('language_code')
-        standard_lang_code = config.convert_to_iso639_1(lang_code_from_api)
-        if standard_lang_code:
-            video_entry['source_language_code'] = standard_lang_code
-            logging.info(f"메타데이터 업데이트: '{video_id}'에 원본 언어 코드 '{standard_lang_code}' 추가 (원본: '{lang_code_from_api}').")
+        
+        # transcriber가 이미 'en'과 같은 표준 코드를 제공합니다.
+        lang_code = transcription_data.get('language_code')
+        
+        if lang_code:
+            video_entry['source_language_code'] = lang_code
+            logging.info(f"메타데이터 업데이트: '{video_id}'에 원본 언어 코드 '{lang_code}' 추가.")
+            
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logging.warning(f"원본 언어 코드를 확인하기 위해 전사 파일을 읽는 중 오류 발생: {e}")

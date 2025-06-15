@@ -3,6 +3,7 @@ import logging
 import json
 from elevenlabs.client import ElevenLabs
 from dotenv import load_dotenv
+from src import config
 
 # .env 파일에서 환경 변수 로드
 load_dotenv()
@@ -44,8 +45,19 @@ def transcribe_audio_elevenlabs(audio_path: str) -> dict:
                 tag_audio_events=True, # Tag audio events like laughter, applause, etc.
                 diarize=True, # 화자 분리 기능 활성화
             )
-            logging.info("✔️ 오디오 전사 완료.")
-            return transcription.model_dump()
+        logging.info("✔️ 오디오 전사 완료.")
+
+        # [핵심 개선] API 응답을 받은 직후, 언어 코드를 표준화합니다.
+        result_dict = transcription.model_dump()
+        lang_code_from_api = result_dict.get('language_code')
+        standard_lang_code = config.convert_to_iso639_1(lang_code_from_api)
+        
+        if standard_lang_code:
+            logging.info(f"언어 코드 표준화: '{lang_code_from_api}' -> '{standard_lang_code}'")
+            result_dict['language_code'] = standard_lang_code
+
+            # return transcription.model_dump()
+        return result_dict
 
     except FileNotFoundError:
         logging.error(f"오디오 파일을 찾을 수 없습니다: {audio_path}")
