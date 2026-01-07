@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import process, websocket
-from app.core.config import get_supported_codes, SUPPORTED_LANGUAGES
+from app.core.config import SUPPORTED_LANGUAGES
 
 # Configure logging
 logging.basicConfig(

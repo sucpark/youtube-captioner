@@ -7,7 +7,7 @@ import ProcessForm from '@/components/ProcessForm';
 import ProgressTracker from '@/components/ProgressTracker';
 import DownloadPanel from '@/components/DownloadPanel';
 import { startProcessing, getJobStatus, JobStatus } from '@/lib/api';
-import { useWebSocket, ProgressMessage } from '@/hooks/useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
 
 export default function Home() {
   const router = useRouter();

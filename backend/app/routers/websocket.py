@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Set
-import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
