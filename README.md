@@ -1,8 +1,12 @@
 # YouTube Caption Generator
 
-Generate and translate subtitles for YouTube videos with a web-based interface.
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-![Screenshot](docs/screenshot.png)
+Generate and translate subtitles for YouTube videos with a web-based interface.
 
 ## Features
 
