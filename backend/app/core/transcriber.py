@@ -1,8 +1,9 @@
-"""Audio transcription using ElevenLabs STT API."""
+"""Audio transcription using OpenAI gpt-4o-transcribe API."""
 
 import json
 import logging
-from elevenlabs.client import ElevenLabs
+import re
+from openai import OpenAI
 from app.core import config
 
 logger = logging.getLogger(__name__)
@@ -10,44 +11,64 @@ logger = logging.getLogger(__name__)
 
 def transcribe_audio(audio_path: str, api_key: str) -> dict:
     """
-    Transcribe audio file using ElevenLabs STT API.
+    Transcribe audio file using OpenAI gpt-4o-transcribe API.
 
     Args:
         audio_path: Path to the audio file
-        api_key: ElevenLabs API key
+        api_key: OpenAI API key
 
     Returns:
-        Transcription result with words and timestamps
+        Transcription result with segments and timestamps
     """
-    client = ElevenLabs(api_key=api_key)
+    client = OpenAI(api_key=api_key)
 
     logger.info(f"Starting transcription: {audio_path}")
 
     try:
         with open(audio_path, "rb") as audio_file:
-            transcription = client.speech_to_text.convert(
+            transcription = client.audio.transcriptions.create(
+                model="gpt-4o-transcribe",
                 file=audio_file,
-                model_id="scribe_v1",
-                tag_audio_events=True,
-                diarize=True,
+                response_format="verbose_json",
             )
         logger.info("Transcription complete")
 
-        result_dict = transcription.model_dump()
-        lang_code_from_api = result_dict.get('language_code')
-        standard_lang_code = config.convert_to_iso639_1(lang_code_from_api)
+        # Parse segments and convert speaker labels to IDs
+        segments = []
+        for seg in transcription.segments:
+            # Handle speaker field if present (diarization)
+            speaker_id = 0
+            speaker = getattr(seg, 'speaker', None)
+            if speaker:
+                # "Speaker 1" -> 0, "Speaker 2" -> 1, etc.
+                speaker_match = re.search(r'Speaker\s*(\d+)', speaker)
+                if speaker_match:
+                    speaker_id = int(speaker_match.group(1)) - 1
+
+            segments.append({
+                "start": seg.start,
+                "end": seg.end,
+                "text": seg.text.strip(),
+                "speaker_id": speaker_id
+            })
+
+        # Detect language from response or default to "en"
+        lang_code = getattr(transcription, 'language', 'en')
+        standard_lang_code = config.convert_to_iso639_1(lang_code)
 
         if standard_lang_code:
-            logger.info(f"Language code normalized: '{lang_code_from_api}' -> '{standard_lang_code}'")
-            result_dict['language_code'] = standard_lang_code
+            logger.info(f"Language code normalized: '{lang_code}' -> '{standard_lang_code}'")
 
-        return result_dict
+        return {
+            "language_code": standard_lang_code or "en",
+            "segments": segments
+        }
 
     except FileNotFoundError:
         logger.error(f"Audio file not found: {audio_path}")
         raise
     except Exception as e:
-        logger.error(f"ElevenLabs API error: {e}")
+        logger.error(f"OpenAI API error: {e}")
         raise ValueError(f"Transcription failed: {e}")
 
 

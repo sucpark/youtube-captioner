@@ -11,7 +11,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 
 export default function Home() {
   const router = useRouter();
-  const [apiKeys, setApiKeys] = useState({ elevenlabs: '', openai: '' });
+  const [apiKeys, setApiKeys] = useState({ openai: '' });
   const [isProcessing, setIsProcessing] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -66,8 +66,8 @@ export default function Home() {
     target_language: string;
     srt_type: 'source' | 'translated' | 'both';
   }) => {
-    if (!apiKeys.elevenlabs || !apiKeys.openai) {
-      alert('Please configure your API keys first');
+    if (!apiKeys.openai) {
+      alert('Please configure your API key first');
       return;
     }
 
@@ -76,7 +76,7 @@ export default function Home() {
     setTargetLanguage(data.target_language);
 
     try {
-      const result = await startProcessing(data, apiKeys.elevenlabs, apiKeys.openai);
+      const result = await startProcessing(data, apiKeys.openai);
       setJobId(result.job_id);
       setJobStatus({
         id: result.job_id,
@@ -97,7 +97,7 @@ export default function Home() {
     }
   };
 
-  const hasApiKeys = apiKeys.elevenlabs && apiKeys.openai;
+  const hasApiKeys = !!apiKeys.openai;
   const isCompleted = jobStatus?.status === 'completed';
 
   return (
@@ -165,10 +165,6 @@ export default function Home() {
         <footer className="text-center text-sm text-gray-500">
           <p>
             Powered by{' '}
-            <a href="https://elevenlabs.io" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
-              ElevenLabs
-            </a>{' '}
-            &{' '}
             <a href="https://openai.com" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">
               OpenAI
             </a>

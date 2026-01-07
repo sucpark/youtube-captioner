@@ -45,14 +45,12 @@ export interface Language {
 
 export async function startProcessing(
   request: ProcessRequest,
-  elevenlabsKey: string,
   openaiKey: string
 ): Promise<{ job_id: string; status: string }> {
   const response = await fetch(`${API_URL}/api/process`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-ElevenLabs-Key': elevenlabsKey,
       'X-OpenAI-Key': openaiKey,
     },
     body: JSON.stringify(request),

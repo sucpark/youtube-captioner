@@ -8,39 +8,45 @@ logger = logging.getLogger(__name__)
 
 
 def _create_translation_chunks(transcription_result: dict, max_chunk_words: int = 50) -> list[dict]:
-    """Group transcription into chunks for translation. New chunk on speaker change."""
+    """Create translation chunks from segments. New chunk on speaker change or size limit."""
     chunks = []
-    current_chunk_words = []
-    current_chunk_text = ""
+    current_chunk = []
+    current_text = ""
     current_speaker = None
 
-    if 'words' not in transcription_result or not transcription_result['words']:
+    segments = transcription_result.get('segments', [])
+    if not segments:
         return []
 
     def finalize_chunk():
-        nonlocal current_chunk_words, current_chunk_text, current_speaker
-        if current_chunk_words:
+        nonlocal current_chunk, current_text, current_speaker
+        if current_chunk:
             chunks.append({
-                "source_text": current_chunk_text.strip(),
-                "start_time": current_chunk_words[0]['start'],
-                "end_time": current_chunk_words[-1]['end']
+                "source_text": current_text.strip(),
+                "start_time": current_chunk[0]['start'],
+                "end_time": current_chunk[-1]['end']
             })
-            current_chunk_words = []
-            current_chunk_text = ""
+            current_chunk = []
+            current_text = ""
             current_speaker = None
 
-    for word_data in transcription_result['words']:
-        if word_data.get('type') == 'spacing':
-            continue
-        speaker = word_data.get('speaker_id', 'unknown')
+    for segment in segments:
+        speaker = segment.get('speaker_id', 0)
+        text = segment.get('text', '')
+        word_count = len(text.split())
+
+        # New chunk on speaker change or size limit
         if (speaker != current_speaker and current_speaker is not None) or \
-           (len(current_chunk_words) >= max_chunk_words):
+           (len(current_text.split()) + word_count > max_chunk_words):
             finalize_chunk()
-        current_chunk_words.append(word_data)
+
         if current_speaker is None:
             current_speaker = speaker
-            current_chunk_text += f"{speaker}: "
-        current_chunk_text += word_data.get('text', '') + " "
+            current_text += f"{speaker}: "
+
+        current_chunk.append(segment)
+        current_text += text + " "
+
     finalize_chunk()
     return chunks
 
@@ -56,7 +62,7 @@ def translate_text(
     Translate transcribed text using GPT-4o-mini.
 
     Args:
-        transcription_result: Transcription result from ElevenLabs
+        transcription_result: Transcription result from OpenAI
         target_language: Target language name (e.g., "Korean", "Japanese")
         api_key: OpenAI API key
         history_size: Number of previous chunks to keep for context

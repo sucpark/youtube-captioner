@@ -39,7 +39,6 @@ class ProcessResponse(BaseModel):
 async def start_processing(
     request: ProcessRequest,
     background_tasks: BackgroundTasks,
-    x_elevenlabs_key: str = Header(..., alias="X-ElevenLabs-Key"),
     x_openai_key: str = Header(..., alias="X-OpenAI-Key"),
 ):
     """Start video processing job."""
@@ -64,7 +63,6 @@ async def start_processing(
         request.srt_type,
         request.max_line_length,
         request.pause_threshold,
-        x_elevenlabs_key,
         x_openai_key,
     )
 
@@ -109,7 +107,6 @@ async def run_pipeline(
     srt_type: str,
     max_line_length: int,
     pause_threshold: float,
-    elevenlabs_key: str,
     openai_key: str,
 ):
     """Run the processing pipeline in background."""
@@ -147,7 +144,7 @@ async def run_pipeline(
             None,
             transcriber.transcribe_audio,
             audio_path,
-            elevenlabs_key,
+            openai_key,
         )
         result["transcription"] = transcription
         result["source_language"] = transcription.get("language_code", "en")
