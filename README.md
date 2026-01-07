@@ -102,7 +102,6 @@ youtube-caption-generator/
 │   │   └── lib/             # API client
 │   └── Dockerfile
 │
-├── src/                      # Original CLI (legacy)
 ├── docker-compose.yml
 └── README.md
 ```
@@ -115,22 +114,6 @@ youtube-caption-generator/
 | Backend | FastAPI, Python 3.12, uv |
 | APIs | ElevenLabs (STT), OpenAI (Translation) |
 | Deployment | Docker, Docker Compose |
-
-## CLI Usage (Legacy)
-
-The original CLI is still available:
-
-```bash
-# Install dependencies
-poetry install
-
-# Set environment variables
-export ELEVENLABS_API_KEY="your_key"
-export OPENAI_API_KEY="your_key"
-
-# Run
-poetry run python main.py --url "https://youtube.com/watch?v=..." --lang ko
-```
 
 ## License
 
