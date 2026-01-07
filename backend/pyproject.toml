@@ -1,7 +1,7 @@
 [project]
-name = "youtube-caption-generator-backend"
+name = "youtube-captioner-backend"
 version = "1.0.0"
-description = "FastAPI backend for YouTube Caption Generator"
+description = "FastAPI backend for YouTube Captioner"
 requires-python = ">=3.12"
 dependencies = [
     "elevenlabs>=2.28.0",

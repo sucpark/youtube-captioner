@@ -20,7 +20,7 @@ Generate and translate subtitles for YouTube videos with a web-based interface.
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd youtube-caption-generator
+cd youtube-captioner
 
 # Start the application
 docker-compose up -d
@@ -79,7 +79,7 @@ API keys are stored in your browser's localStorage and sent directly to the APIs
 ## Project Structure
 
 ```
-youtube-caption-generator/
+youtube-captioner/
 ├── backend/                  # FastAPI backend
 │   ├── app/
 │   │   ├── main.py          # FastAPI entry point
